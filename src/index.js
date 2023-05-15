@@ -31,6 +31,7 @@ export default function Home() {
 
     function toggleCameraType() {
         setType(current => (current === CameraType.back ? CameraType.front : CameraType.back))
+        setFlashMode(Camera.Constants.FlashMode.off)
     }
 
     function photoFlash() {
