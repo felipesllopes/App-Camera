@@ -1,30 +1,40 @@
 import { Feather, FontAwesome } from "@expo/vector-icons";
+import Slider from '@react-native-community/slider';
 import { AutoFocus, Camera, CameraType, } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
-import { useRef, useState } from "react";
-import { Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View, } from "react-native";
 
 export default function Home() {
 
     const [type, setType] = useState(CameraType.back);
-    const [permission, requestPermission] = Camera.useCameraPermissions();
+    const [permission, setPermission] = useState();
     const camRef = useRef(null);
     const [capturedPhoto, setCapturedPhoto] = useState();
     const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off)
     const [open, setOpen] = useState(false);
     const [focus, setFocus] = useState(AutoFocus.on)
-    const [zoom, setZoom] = useState(Camera.defaultProps.zoom)
+    const [zoom, setZoom] = useState(0)
 
-    if (!permission) {
-        return <View />
-    }
+    useEffect(() => {
+        (async () => {
 
-    if (!permission.granted) {
-        return <Text>Acesso negado!</Text>
-    }
+            const { status } = await Camera.requestCameraPermissionsAsync();
+            setPermission(status === "granted")
+
+            if (!permission) {
+                return <View />
+            }
+
+            if (!permission.granted) {
+                return <Text>Acesso negado!</Text>
+            }
+        })();
+
+    }, [])
 
     async function takePicture() {
-        if (camRef) {
+        if (camRef || permission) {
             const data = await camRef.current.takePictureAsync();
             setCapturedPhoto(data.uri);
             setOpen(true);
@@ -51,21 +61,35 @@ export default function Home() {
         setFocus(current => (current === Camera.Constants.AutoFocus.off ? Camera.Constants.AutoFocus.on : Camera.Constants.AutoFocus.off))
     }
 
-    // Usar o SLIDER pra poder controlar o zoom. Valor min de 0 e max de 1
-
     return (
         <SafeAreaView style={styles.container} >
 
             <Camera
-                ref={camRef}
                 style={styles.camera}
+                ref={camRef}
                 type={type}
                 flashMode={flashMode}
                 autoFocus={focus}
                 zoom={zoom}
             />
 
-            <View style={styles.boxOptions}>
+
+            <View style={styles.slidesFocus}>
+                <View style={styles.viewSlides}>
+                    <Text style={styles.textSlides}>-</Text>
+                    <Slider
+                        minimumValue={0}
+                        maximumValue={1}
+                        value={zoom}
+                        onValueChange={(valor) => setZoom(valor)}
+                        thumbTintColor="#EEE"
+                        maximumTrackTintColor="#FFF"
+                        minimumTrackTintColor="#CCC"
+                        style={{ width: 150, }}
+                    />
+                    <Text style={styles.textSlides}>+</Text>
+                </View>
+
                 <TouchableOpacity style={styles.focus} onPress={changeFocus}>
                     <Text style={styles.textFocus}>Foco</Text>
                     {focus ?
@@ -76,13 +100,13 @@ export default function Home() {
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.boxButtons}>
 
+            <View style={styles.picture}>
                 <TouchableOpacity onPress={toggleCameraType}>
                     <Feather name="refresh-ccw" size={30} color={"white"} />
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={takePicture} style={styles.camButtom} />
+                <TouchableOpacity onPress={takePicture} style={styles.buttomPicture} />
 
                 <TouchableOpacity onPress={photoFlash}>
                     {flashMode ?
@@ -93,6 +117,7 @@ export default function Home() {
                 </TouchableOpacity>
             </View>
 
+
             {capturedPhoto &&
                 <Modal
                     animationType="slide"
@@ -102,7 +127,7 @@ export default function Home() {
                     <View style={styles.modalPhoto}>
 
                         <View style={[styles.viewButtons, { borderTopLeftRadius: 12, borderTopRightRadius: 12 }]}>
-                            <TouchableOpacity style={styles.modalButton} onPress={() => setOpen(false)}>
+                            <TouchableOpacity style={styles.modalButtons} onPress={() => setOpen(false)}>
                                 <FontAwesome name="window-close" size={34} color={"white"} />
                             </TouchableOpacity>
                         </View>
@@ -113,7 +138,7 @@ export default function Home() {
                         />
 
                         <View style={[styles.viewButtons, { borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }]}>
-                            <TouchableOpacity style={styles.modalButton} onPress={savePicture}>
+                            <TouchableOpacity style={styles.modalButtons} onPress={savePicture}>
                                 <FontAwesome name="upload" size={34} color={"white"} />
                             </TouchableOpacity>
                         </View>
@@ -131,39 +156,41 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     camera: {
-        height: 666,
-        width: 500.5,
+        height: '78%',
+        width: "100%",
         alignSelf: 'center'
     },
-    slide: {
-        backgroundColor: 'red',
-        flexDirection: 'row'
-    },
-    textSlide: {
-        color: 'white',
-        fontWeight: 'bold'
-    },
-    boxOptions: {
+    slidesFocus: {
         backgroundColor: '#131313',
         alignItems: 'flex-start'
+    },
+    viewSlides: {
+        flexDirection: 'row',
+        alignSelf: 'center',
+    },
+    textSlides: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16
     },
     focus: {
         flexDirection: 'row',
         alignItems: 'center',
+        paddingLeft: 10,
     },
     textFocus: {
         color: 'white',
         fontSize: 17,
         marginRight: 6,
     },
-    boxButtons: {
+    picture: {
         flex: 1,
         backgroundColor: '#000',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around'
     },
-    camButtom: {
+    buttomPicture: {
         backgroundColor: 'white',
         textAlign: 'center',
         borderWidth: 2,
@@ -181,7 +208,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'black',
         alignItems: 'center',
     },
-    modalButton: {
+    modalButtons: {
         margin: 1,
     },
     photo: {
